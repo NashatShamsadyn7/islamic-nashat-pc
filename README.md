@@ -7,11 +7,9 @@
 </div>
 
 ```
-         ┌──────────────────┐
-         │     الظّهر        │
-         │     11:00        │
-         │   باقٍ 17 دقيقة   │
-         └──────────────────┘
+   ╭──────────────────────────────────╮
+   │  12:17  │  الظّهر  │  00:17:23   │
+   ╰──────────────────────────────────╯
 ```
 
 ## التنزيل
@@ -37,31 +35,46 @@
 
 | الإعداد | ماذا يفعل |
 |---|---|
+| الموقع | ابحث عن مدينتك، أو اضغط «تحديد تلقائياً» |
+| الأذان | ١١ تلاوة — **اسمعها قبل أن تختار** بزرّ ▶ |
+| شريط مضغوط | سطر واحد، أو البطاقة الأكبر |
 | الإشعارات | إشعار ويندوز عند دخول الوقت |
-| صوت الأذان | تشغيل الأذان، مع زرّ إيقاف على الويدجت |
-| اختيار الأذان | ١١ تلاوة — المُضمَّنة تعمل دون إنترنت، والبقية تُنزَّل مرّة واحدة |
+| تنبيه قبل الأذان | ٥ إلى ٣٠ دقيقة، أو معطّل |
+| إزاحة الأوقات | ±٦٠ دقيقة لكل صلاة على حدة |
 | التشغيل مع ويندوز | اختصار في مجلد بدء التشغيل |
 
 <div dir="rtl">
 
 الإعدادات في `%APPDATA%\IslamicNashatWidget\settings.json`، ويمكن تحريرها يدوياً.
-حقل `offsets` يزيح كل صلاة بالدقائق، و`pre_athan_minutes` ينبّه قبل الأذان (0 = معطّل).
 
 </div>
 
 ---
 
-## Why there is no astronomical calculation
+## Matching the phone
 
-This mirrors an Android app (`com.nashat.prayers`) that shows prayer times for **Bardarash,
-Iraq**. That app does not compute those times: the city is flagged
-`has_fixed_prayer_time = 1` in its bundled muslim-data database, so it reads a pre-computed
-row out of a `prayer_time` table keyed by `MM-DD`.
+This mirrors an Android app (`com.nashat.prayers`). Both resolve a day's times the same
+two ways, in the same order:
 
-`assets/timetable.json` is that exact table, extracted for Bardarash — 366 days including
-29 February. Reading the same rows is the only way this widget can be guaranteed to agree
-with the phone to the minute. Adding a calculation here would reintroduce the disagreement
-it exists to avoid.
+**A fixed timetable, when the city has one.** 252 of the 166,404 known places are flagged
+`has_fixed_prayer_time` and carry a pre-computed row per `MM-DD`. `assets/locations.db`
+holds those 45,749 rows, lifted straight out of the app's bundled muslim-data database, so
+for those cities the two agree by construction. Bardarash is one of them.
+
+**Astronomical calculation, everywhere else.** `calculator.py` is a line-by-line port of
+`MuslimDataCalculator.kt`, itself a port of `Prayer.swift` from MuslimData.
+
+The port is not trusted on inspection. `CalculatorGoldenDumpTest` in the Android repository
+runs the Kotlin class over 15 cities — every calculation method, both Asr juristics, high
+latitudes, the southern hemisphere, half-hour timezones — across 6 dates, and writes the
+result to `tests/calculator_golden.json`. `test_calculator.py` asserts the Python output
+equals it **to the second**. A well-meaning cleanup that changes behaviour fails the suite.
+
+Re-generate the dump after changing the calculation:
+
+```bash
+./gradlew :app:testDebugUnitTest --tests '*CalculatorGoldenDumpTest*' -i
+```
 
 ## Running from source
 
@@ -81,17 +94,15 @@ that are easy to get wrong are tested directly: the countdown crossing midnight 
 tomorrow's Fajr, a prayer landing on the current minute, a restart shortly after a prayer
 that must not replay it, a laptop waking from hours of sleep, and 29 February.
 
-## Changing city
+## Rebuilding the location database
 
-Only 252 of the locations in that database carry a fixed timetable. For one of those:
+`assets/locations.db` is 16.6 MB — the `country`, `location` and `prayer_time` tables from
+the Android app's 28.8 MB muslim-data file, with the Quran, azkar and names of Allah left
+behind. Regenerate it after the app updates that database:
 
 ```bash
-python tools/extract_timetable.py "Erbil" assets/timetable.json
+python tools/extract_locations.py assets/locations.db
 ```
-
-For any other city the Android app falls back to astronomical calculation, and matching it
-would mean porting that calculation — which this project deliberately does not do. Extract
-will refuse rather than emit times that disagree with the phone.
 
 ## Releasing
 

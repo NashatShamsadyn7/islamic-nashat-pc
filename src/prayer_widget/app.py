@@ -13,8 +13,10 @@ from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
 from PySide6.QtWidgets import QApplication, QMenu, QMessageBox, QSystemTrayIcon
 
 from . import __version__, autostart, sounds, updater
-from .config import Config, bundled_path
-from .timetable import ARABIC_NAMES, DISPLAY_KEYS, Timetable, format_remaining
+from .config import Config
+from .locations import PlaceTimetable
+from .settings_dialog import SettingsDialog
+from .timetable import ARABIC_NAMES, DISPLAY_KEYS, format_remaining
 from .widget import PrayerWidget
 
 APP_NAME = "أوقات الصلاة"
@@ -63,7 +65,7 @@ class SoundFetch(QThread):
 class PrayerApp:
     def __init__(self) -> None:
         self.config = Config.load()
-        self.timetable = Timetable.load(bundled_path("assets", "timetable.json"))
+        self.timetable = PlaceTimetable(self.config.place())
 
         self.qt = QApplication(sys.argv)
         self.qt.setQuitOnLastWindowClosed(False)
@@ -115,28 +117,14 @@ class PrayerApp:
         self._toggle_widget.triggered.connect(self._set_widget_visible)
         menu.addAction(self._toggle_widget)
 
-        notify = QAction("الإشعارات", menu, checkable=True)
-        notify.setChecked(self.config.notifications)
-        notify.triggered.connect(lambda on: self._set("notifications", on))
-        menu.addAction(notify)
+        self._compact_action = QAction("شريط مضغوط", menu, checkable=True)
+        self._compact_action.setChecked(self.config.compact)
+        self._compact_action.triggered.connect(self._set_compact)
+        menu.addAction(self._compact_action)
 
-        athan = QAction("صوت الأذان", menu, checkable=True)
-        athan.setChecked(self.config.athan_sound)
-        athan.triggered.connect(lambda on: self._set("athan_sound", on))
-        menu.addAction(athan)
-
-        recitations = menu.addMenu("اختيار الأذان")
-        recitations.setLayoutDirection(menu.layoutDirection())
-        group = QActionGroup(recitations)
-        group.setExclusive(True)
-        for label, file_name in sounds.CATALOGUE.items():
-            action = QAction(label, recitations, checkable=True)
-            action.setChecked(file_name == self.config.athan_file)
-            action.triggered.connect(
-                lambda _checked=False, name=file_name: self._choose_athan(name)
-            )
-            group.addAction(action)
-            recitations.addAction(action)
+        settings = QAction("الإعدادات…", menu)
+        settings.triggered.connect(self._open_settings)
+        menu.addAction(settings)
 
         startup = QAction("التشغيل مع ويندوز", menu, checkable=True)
         # Read the real state rather than the stored one: the user may have deleted the
@@ -182,13 +170,38 @@ class PrayerApp:
                 APP_NAME, "تعذّر تعديل التشغيل التلقائي", _make_icon(), 5000
             )
 
-    def _choose_athan(self, file_name: str) -> None:
-        self._set("athan_file", file_name)
-        if sounds.local_path(file_name) is None:
-            # Fetch it now rather than at prayer time, when a slow download would delay
-            # the athan or silently fall back.
-            self.tray.showMessage(APP_NAME, "جارٍ تنزيل الأذان…", _make_icon(), 3000)
-            self._run(SoundFetch(file_name), lambda _p: None)
+    def _set_compact(self, compact: bool) -> None:
+        self._set("compact", compact)
+        self.widget.apply_layout(compact)
+        self._tick()
+
+    def _open_settings(self) -> None:
+        before = self.config.place()
+        dialog = SettingsDialog(self.config, self._preview)
+        if dialog.exec() != SettingsDialog.DialogCode.Accepted:
+            return
+
+        after = self.config.place()
+        if (after.id, after.tz_offset_hours) != (before.id, before.tz_offset_hours):
+            # A new place means a new set of times, so the cached day and the
+            # already-announced marker both have to go with it.
+            self.timetable = PlaceTimetable(after)
+            self.widget.set_timetable(self.timetable)
+            self.tray.showMessage(APP_NAME, f"الموقع: {after.label}", _make_icon(), 4000)
+
+        self.widget.apply_layout(self.config.compact)
+        self._compact_action.setChecked(self.config.compact)
+        autostart.set_enabled(self.config.start_with_windows)
+        self._startup_action.setChecked(autostart.is_enabled())
+        self._pending_reminder = None
+        self._tick()
+
+    def _preview(self, path: str | None) -> None:
+        """Plays a recitation for the settings dialog, or stops whatever is playing."""
+        if path is None:
+            self._player.stop()
+            return
+        self._play_file(path)
 
     # --- ticking ------------------------------------------------------------------
 

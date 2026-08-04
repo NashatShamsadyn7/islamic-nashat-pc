@@ -157,3 +157,15 @@ def format_remaining(delta: timedelta) -> str:
 
     hours, minutes = divmod(minutes_total, 60)
     return f"باقٍ {hours}:{minutes:02d}"
+
+
+def format_clock(delta: timedelta) -> str:
+    """``HH:MM:SS`` for the one-line widget, where the seconds are the point.
+
+    Always three fields, always zero-padded: a countdown whose width changes as it passes
+    an hour makes the whole line jump sideways every tick.
+    """
+    total_seconds = max(0, int(delta.total_seconds()))
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d}"

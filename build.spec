@@ -12,7 +12,9 @@ analysis = Analysis(
     binaries=[],
     # Loaded through config.bundled_path(), which resolves sys._MEIPASS when frozen.
     datas=[
-        ("assets/timetable.json", "assets"),
+        # 166,404 places and the 45,749 fixed timetable rows, lifted straight out of the
+        # Android app's muslim-data database so both agree on every city.
+        ("assets/locations.db", "assets"),
         ("assets/azan_makkah.mp3", "assets"),
     ],
     hiddenimports=[],

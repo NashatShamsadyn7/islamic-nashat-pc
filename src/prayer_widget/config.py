@@ -52,6 +52,10 @@ class Config:
     start_with_windows: bool = False
     check_for_updates: bool = True
     widget_visible: bool = True
+    #: One-line bar rather than the taller card.
+    compact: bool = True
+    #: The chosen place, as produced by Place.to_dict(). None means the built-in default.
+    location: dict | None = None
     position: dict[str, int] = field(default_factory=lambda: {"x": 60, "y": 60})
     #: ISO timestamp of the last prayer announced, so a restart does not replay it.
     last_announced: str | None = None
@@ -96,3 +100,19 @@ class Config:
     def mark_announced(self, moment: datetime) -> None:
         self.last_announced = moment.isoformat(timespec="seconds")
         self.save()
+
+    def place(self):
+        """The chosen place, falling back to the default if the stored one is unusable.
+
+        Imported here rather than at module scope because locations imports config.
+        """
+        from .locations import BARDARASH, Place
+
+        if not self.location:
+            return BARDARASH
+        try:
+            return Place.from_dict(self.location)
+        except (KeyError, TypeError, ValueError):
+            # A settings file edited by hand into something invalid should not stop the
+            # widget from showing times.
+            return BARDARASH
