@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/IslamicNashat/IslamicNashat.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/IslamicNashat.Tests/IslamicNashat.Tests.csproj" />
+  </Folder>
+</Solution>

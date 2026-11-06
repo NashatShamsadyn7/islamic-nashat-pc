@@ -1,14 +1,19 @@
+# .NET
+bin/
+obj/
+publish/
+dist/
+*.user
+.vs/
+TestResults/
+
+# Python tool
 __pycache__/
 *.py[cod]
-.pytest_cache/
-.venv/
-venv/
 
-# PyInstaller output
-build/
-dist/
-*.manifest
-
-# The executable is produced by CI on every release; a 40 MB binary per version would
-# make the repository unusable.
+# Installers are published as release assets, never committed.
 *.exe
+
+# OS
+Thumbs.db
+desktop.ini

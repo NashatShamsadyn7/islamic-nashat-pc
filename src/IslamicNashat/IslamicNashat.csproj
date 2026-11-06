@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <!-- WPF and WinForms both define Application, MessageBox, etc.; usings are explicit instead. -->
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <!-- ThemeMode (Fluent theme) is marked experimental in WPF. -->
+    <NoWarn>$(NoWarn);WPF0001</NoWarn>
+    <AssemblyName>IslamicNashat</AssemblyName>
+    <RootNamespace>IslamicNashat</RootNamespace>
+    <Version>2.0.0</Version>
+    <Product>Islamic Nashat</Product>
+    <Company>Nashat Shamsadyn</Company>
+    <Copyright>Copyright (c) 2026 Nashat Shamsadyn</Copyright>
+    <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- A widget that runs all day: no background GC thread, smaller heaps. -->
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.0" />
+    <!-- 2.1.11, which Microsoft.Data.Sqlite brings in, bundles an SQLite with a known vulnerability. -->
+    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.14" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\icon.ico" />
+    <Resource Include="Assets\icon.png" />
+    <!-- SQLite and MediaPlayer need real files, so these sit next to the exe instead of inside it. -->
+    <Content Include="Assets\locations.db" CopyToOutputDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+    <Content Include="Assets\azan_makkah.mp3" CopyToOutputDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="IslamicNashat.Tests" />
+  </ItemGroup>
+
+</Project>
